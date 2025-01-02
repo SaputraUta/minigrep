@@ -1,11 +1,44 @@
-#[derive(PartialEq, Debug)]
-struct Shoe {
-    size: u32,
-    style: String,
+use std::error::Error;
+use std::fs;
+
+pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    let contents = fs::read_to_string(config.file_path)?;
+
+    for line in search(&config.query, &contents) {
+        println!("{}", line);
+    }
+
+    Ok(())
 }
 
-fn shoes_in_size(shoes: Vec<Shoe>, shoe_size: u32) -> Vec<Shoe> {
-    shoes.into_iter().filter(|s| s.size == shoe_size).collect()
+pub struct Config {
+    pub query: String,
+    pub file_path: String,
+}
+
+impl Config {
+    pub fn build(args: &[String]) -> Result<Config, &'static str> {
+        if args.len() < 3 {
+            return Err("not enough arguments");
+        }
+
+        let query = args[1].clone();
+        let file_path = args[2].clone();
+
+        Ok(Config { query, file_path })
+    }
+}
+
+pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+    let mut results = Vec::new();
+
+    for line in contents.lines() {
+        if line.contains(query) {
+            results.push(line);
+        }
+    }
+
+    results
 }
 
 #[cfg(test)]
@@ -13,36 +46,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn filters_by_size() {
-        let shoes = vec![
-            Shoe {
-                size: 10,
-                style: String::from("sneaker"),
-            },
-            Shoe {
-                size: 13,
-                style: String::from("sandal"),
-            },
-            Shoe {
-                size: 10,
-                style: String::from("boot"),
-            },
-        ];
+    fn one_result() {
+        let query = "duct";
+        let contents = "\
+Rust: 
+safe, fast, productive.
+Pick three.";
 
-        let in_my_size = shoes_in_size(shoes, 10);
-
-        assert_eq!(
-            in_my_size,
-            vec![
-                Shoe {
-                    size: 10,
-                    style: String::from("sneaker")
-                },
-                Shoe {
-                    size: 10,
-                    style: String::from("boot")
-                },
-            ]
-        );
+        assert_eq!(vec!["safe, fast, productive."], search(query, contents));
     }
 }
